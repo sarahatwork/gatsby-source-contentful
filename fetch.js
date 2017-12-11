@@ -4,111 +4,184 @@ var _extends2 = require("babel-runtime/helpers/extends");
 
 var _extends3 = _interopRequireDefault(_extends2);
 
+var _regenerator = require("babel-runtime/regenerator");
+
+var _regenerator2 = _interopRequireDefault(_regenerator);
+
+var _asyncToGenerator2 = require("babel-runtime/helpers/asyncToGenerator");
+
+var _asyncToGenerator3 = _interopRequireDefault(_asyncToGenerator2);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-const contentful = require(`contentful`);
-const _ = require(`lodash`);
+var contentful = require(`contentful`);
+var _ = require(`lodash`);
 
-const normalize = require(`./normalize`);
+var normalize = require(`./normalize`);
 
-module.exports = async ({ spaceId, accessToken, host, syncToken }) => {
-  // Fetch articles.
-  console.time(`Fetch Contentful data`);
-  console.log(`Starting to fetch data from Contentful`);
+module.exports = function () {
+  var _ref2 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee(_ref) {
+    var spaceId = _ref.spaceId,
+        accessToken = _ref.accessToken,
+        host = _ref.host,
+        syncToken = _ref.syncToken;
+    var client, space, defaultLocale, currentSyncData, query, contentTypes, contentTypeItems;
+    return _regenerator2.default.wrap(function _callee$(_context) {
+      while (1) {
+        switch (_context.prev = _context.next) {
+          case 0:
+            // Fetch articles.
+            console.time(`Fetch Contentful data`);
+            console.log(`Starting to fetch data from Contentful`);
 
-  const client = contentful.createClient({
-    space: spaceId,
-    accessToken,
-    host: host || `cdn.contentful.com`
-  });
+            client = contentful.createClient({
+              space: spaceId,
+              accessToken,
+              host: host || `cdn.contentful.com`
+            });
 
-  // The sync API puts the locale in all fields in this format { fieldName:
-  // {'locale': value} } so we need to get the space and its default local.
-  //
-  // We'll extend this soon to support multiple locales.
-  let space;
-  let defaultLocale = `en-US`;
-  try {
-    console.log(`Fetching default locale`);
-    space = await client.getSpace();
-    defaultLocale = _.find(space.locales, { default: true }).code;
-    console.log(`default local is : ${defaultLocale}`);
-  } catch (e) {
-    console.log(`Accessing your Contentful space failed. Perhaps you're offline or the spaceId/accessToken is incorrect.`);
-    // TODO perhaps continue if there's cached data? That would let
-    // someone develop a contentful site even if not connected to the internet.
-    // For prod builds though always fail if we can't get the latest data.
-    process.exit(1);
-  }
+            // The sync API puts the locale in all fields in this format { fieldName:
+            // {'locale': value} } so we need to get the space and its default local.
+            //
+            // We'll extend this soon to support multiple locales.
 
-  let currentSyncData;
-  try {
-    let query = syncToken ? { nextSyncToken: syncToken } : { initial: true };
-    currentSyncData = await client.sync(query);
-  } catch (e) {
-    console.log(`error fetching contentful data`, e);
-    process.exit(1);
-  }
+            space = void 0;
+            defaultLocale = `en-US`;
+            _context.prev = 5;
 
-  // We need to fetch content types with the non-sync API as the sync API
-  // doesn't support this.
-  let contentTypes;
-  try {
-    contentTypes = await pagedGet(client, `getContentTypes`);
-  } catch (e) {
-    console.log(`error fetching content types`, e);
-  }
-  console.log(`contentTypes fetched`, contentTypes.items.length);
+            console.log(`Fetching default locale`);
+            _context.next = 9;
+            return client.getSpace();
 
-  let contentTypeItems = contentTypes.items;
+          case 9:
+            space = _context.sent;
 
-  // Fix IDs on entries and assets, created/updated and deleted.
-  contentTypeItems = contentTypeItems.map(c => normalize.fixIds(c));
+            defaultLocale = _.find(space.locales, { default: true }).code;
+            console.log(`default local is : ${defaultLocale}`);
+            _context.next = 18;
+            break;
 
-  currentSyncData.entries = currentSyncData.entries.map(e => {
-    if (e) {
-      return normalize.fixIds(e);
-    }
-    return null;
-  });
-  currentSyncData.assets = currentSyncData.assets.map(a => {
-    if (a) {
-      return normalize.fixIds(a);
-    }
-    return null;
-  });
-  currentSyncData.deletedEntries = currentSyncData.deletedEntries.map(e => {
-    if (e) {
-      return normalize.fixIds(e);
-    }
-    return null;
-  });
-  currentSyncData.deletedAssets = currentSyncData.deletedAssets.map(a => {
-    if (a) {
-      return normalize.fixIds(a);
-    }
-    return null;
-  });
+          case 14:
+            _context.prev = 14;
+            _context.t0 = _context["catch"](5);
 
-  return {
-    currentSyncData,
-    contentTypeItems,
-    defaultLocale,
-    locales: space.locales
+            console.log(`Accessing your Contentful space failed. Perhaps you're offline or the spaceId/accessToken is incorrect.`);
+            // TODO perhaps continue if there's cached data? That would let
+            // someone develop a contentful site even if not connected to the internet.
+            // For prod builds though always fail if we can't get the latest data.
+            process.exit(1);
+
+          case 18:
+            currentSyncData = void 0;
+            _context.prev = 19;
+            query = syncToken ? { nextSyncToken: syncToken } : { initial: true };
+            _context.next = 23;
+            return client.sync(query);
+
+          case 23:
+            currentSyncData = _context.sent;
+            _context.next = 30;
+            break;
+
+          case 26:
+            _context.prev = 26;
+            _context.t1 = _context["catch"](19);
+
+            console.log(`error fetching contentful data`, _context.t1);
+            process.exit(1);
+
+          case 30:
+
+            // We need to fetch content types with the non-sync API as the sync API
+            // doesn't support this.
+            contentTypes = void 0;
+            _context.prev = 31;
+            _context.next = 34;
+            return pagedGet(client, `getContentTypes`);
+
+          case 34:
+            contentTypes = _context.sent;
+            _context.next = 40;
+            break;
+
+          case 37:
+            _context.prev = 37;
+            _context.t2 = _context["catch"](31);
+
+            console.log(`error fetching content types`, _context.t2);
+
+          case 40:
+            console.log(`contentTypes fetched`, contentTypes.items.length);
+
+            contentTypeItems = contentTypes.items;
+
+            // Fix IDs on entries and assets, created/updated and deleted.
+
+            contentTypeItems = contentTypeItems.map(function (c) {
+              return normalize.fixIds(c);
+            });
+
+            currentSyncData.entries = currentSyncData.entries.map(function (e) {
+              if (e) {
+                return normalize.fixIds(e);
+              }
+              return null;
+            });
+            currentSyncData.assets = currentSyncData.assets.map(function (a) {
+              if (a) {
+                return normalize.fixIds(a);
+              }
+              return null;
+            });
+            currentSyncData.deletedEntries = currentSyncData.deletedEntries.map(function (e) {
+              if (e) {
+                return normalize.fixIds(e);
+              }
+              return null;
+            });
+            currentSyncData.deletedAssets = currentSyncData.deletedAssets.map(function (a) {
+              if (a) {
+                return normalize.fixIds(a);
+              }
+              return null;
+            });
+
+            return _context.abrupt("return", {
+              currentSyncData,
+              contentTypeItems,
+              defaultLocale,
+              locales: space.locales
+            });
+
+          case 48:
+          case "end":
+            return _context.stop();
+        }
+      }
+    }, _callee, undefined, [[5, 14], [19, 26], [31, 37]]);
+  }));
+
+  return function (_x) {
+    return _ref2.apply(this, arguments);
   };
-};
+}();
 
 /**
  * Gets all the existing entities based on pagination parameters.
  * The first call will have no aggregated response. Subsequent calls will
  * concatenate the new responses to the original one.
  */
-function pagedGet(client, method, query = {}, skip = 0, pageLimit = 1000, aggregatedResponse = null) {
+function pagedGet(client, method) {
+  var query = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
+  var skip = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : 0;
+  var pageLimit = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : 1000;
+  var aggregatedResponse = arguments.length > 5 && arguments[5] !== undefined ? arguments[5] : null;
+
   return client[method]((0, _extends3.default)({}, query, {
     skip: skip,
     limit: pageLimit,
     order: `sys.createdAt`
-  })).then(response => {
+  })).then(function (response) {
     if (!aggregatedResponse) {
       aggregatedResponse = response;
     } else {
