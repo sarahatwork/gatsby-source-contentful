@@ -2,7 +2,7 @@
 
 exports.__esModule = true;
 /* eslint-disable */
-var contentfulAssetResolutions = exports.contentfulAssetResolutions = graphql`
+const contentfulAssetResolutions = exports.contentfulAssetResolutions = graphql`
   fragment GatsbyContentfulResolutions on ContentfulResolutions {
     base64
     width
@@ -12,7 +12,7 @@ var contentfulAssetResolutions = exports.contentfulAssetResolutions = graphql`
   }
 `;
 
-var contentfulAssetResolutionsNoBase64 = exports.contentfulAssetResolutionsNoBase64 = graphql`
+const contentfulAssetResolutionsNoBase64 = exports.contentfulAssetResolutionsNoBase64 = graphql`
   fragment GatsbyContentfulResolutions_noBase64 on ContentfulResolutions {
     width
     height
@@ -21,7 +21,7 @@ var contentfulAssetResolutionsNoBase64 = exports.contentfulAssetResolutionsNoBas
   }
 `;
 
-var contentfulAssetSizes = exports.contentfulAssetSizes = graphql`
+const contentfulAssetSizes = exports.contentfulAssetSizes = graphql`
   fragment GatsbyContentfulSizes on ContentfulSizes {
     base64
     aspectRatio
@@ -31,7 +31,7 @@ var contentfulAssetSizes = exports.contentfulAssetSizes = graphql`
   }
 `;
 
-var contentfulAssetSizesNoBase64 = exports.contentfulAssetSizesNoBase64 = graphql`
+const contentfulAssetSizesNoBase64 = exports.contentfulAssetSizesNoBase64 = graphql`
   fragment GatsbyContentfulSizes_noBase64 on ContentfulSizes {
     aspectRatio
     src

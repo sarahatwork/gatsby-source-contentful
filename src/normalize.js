@@ -39,8 +39,17 @@ const fixId = id => {
 }
 exports.fixId = fixId
 
-exports.fixIds = object =>
-  deepMap(object, (v, k) => (k === `id` ? fixId(v) : v))
+exports.fixIds = object => {
+  const out = deepMap(object, (v, k) => (k === `id` ? fixId(v) : v))
+
+  return {
+    ...out,
+    sys: {
+      ...out.sys,
+      contentful_id: object.sys.id,
+    },
+  }
+}
 
 const makeId = ({ id, currentLocale, defaultLocale }) =>
   currentLocale === defaultLocale ? id : `${id}___${currentLocale}`
@@ -184,6 +193,30 @@ function createJSONNode(node, key, content, createNode) {
 }
 exports.createJSONNode = createJSONNode
 
+const getBlankValue = contentTypeItemField => {
+  if (contentTypeItemField.type.match(/Symbol|Date/)) {
+    return ``
+  } else if (contentTypeItemField.type.match(/Text/)) {
+    return { [contentTypeItemField.id]: `` }
+  } else if (contentTypeItemField.type.match(/Number/)) {
+    return NaN
+  } else if (
+    contentTypeItemField.type.match(
+      /Object|Location|Media|Reference|Link/
+    )
+  ) {
+    return {}
+  } else if (contentTypeItemField.type.match(/Array/)) {
+    // Setting values recursively is useful for 'never defined entries'
+    // TODO: Does not work for arrays of references, assets, objects, ...
+    return [getBlankValue(contentTypeItemField.items)]
+  } else if (contentTypeItemField.type.match(/Boolean/)) {
+    return false
+  }
+
+  return undefined
+}
+
 exports.createContentTypeNodes = ({
   contentTypeItem,
   restrictedNodeFields,
@@ -206,13 +239,16 @@ exports.createContentTypeNodes = ({
       const fieldName = contentTypeItemField.id
       if (restrictedNodeFields.includes(fieldName)) {
         console.log(
-          `Restricted field found for ContentType ${
-            contentTypeItemId
-          } and field ${fieldName}. Prefixing with ${conflictFieldPrefix}.`
+          `Restricted field found for ContentType ${contentTypeItemId} and field ${fieldName}. Prefixing with ${conflictFieldPrefix}.`
         )
         conflictFields.push(fieldName)
       }
     })
+
+    const defaultFields = contentTypeItem.fields.reduce((acc, contentTypeItemField) => {
+      acc[contentTypeItemField.id] = getBlankValue(contentTypeItemField)
+      return acc
+    }, {})
 
     // First create nodes for each of the entries of that content type
     const entryNodes = entries.map(entryItem => {
@@ -279,6 +315,7 @@ exports.createContentTypeNodes = ({
 
       let entryNode = {
         id: mId(entryItem.sys.id),
+        contentful_id: entryItem.sys.contentful_id,
         createdAt: entryItem.sys.createdAt,
         updatedAt: entryItem.sys.updatedAt,
         parent: contentTypeItemId,
@@ -335,7 +372,12 @@ exports.createContentTypeNodes = ({
         }
       })
 
-      entryNode = { ...entryItemFields, ...entryNode, node_locale: locale.code }
+      entryNode = {
+        ...defaultFields,
+        ...entryItemFields,
+        ...entryNode,
+        node_locale: locale.code,
+      }
 
       // Get content digest of node.
       const contentDigest = digest(stringify(entryNode))
