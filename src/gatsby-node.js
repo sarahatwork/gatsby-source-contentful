@@ -7,7 +7,14 @@ const fetchData = require(`./fetch`)
 const conflictFieldPrefix = `contentful`
 
 // restrictedNodeFields from here https://www.gatsbyjs.org/docs/node-interface/
-const restrictedNodeFields = [`id`, `children`, `parent`, `fields`, `internal`]
+const restrictedNodeFields = [
+  `children`,
+  `contentful_id`,
+  `fields`,
+  `id`,
+  `internal`,
+  `parent`,
+]
 
 exports.setFieldsOnGraphQLNodeType = require(`./extend-node-type`).extendNodeType
 
@@ -23,8 +30,8 @@ exports.setFieldsOnGraphQLNodeType = require(`./extend-node-type`).extendNodeTyp
  */
 
 exports.sourceNodes = async (
-  { boundActionCreators, getNodes, hasNodeChanged, store },
-  { spaceId, accessToken, host }
+  { boundActionCreators, getNodes, hasNodeChanged, store, traceId },
+  { spaceId, accessToken, host, exportFile }
 ) => {
   const {
     createNode,
@@ -56,6 +63,8 @@ exports.sourceNodes = async (
     spaceId,
     accessToken,
     host,
+    exportFile,
+    traceId,
   })
 
   const entryList = normalize.buildEntryList({

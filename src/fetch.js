@@ -1,9 +1,17 @@
 const contentful = require(`contentful`)
+const fs = require(`fs-extra`)
 const _ = require(`lodash`)
 
 const normalize = require(`./normalize`)
 
-module.exports = async ({ spaceId, accessToken, host, syncToken }) => {
+module.exports = async ({
+  spaceId,
+  accessToken,
+  host,
+  syncToken,
+  exportFile,
+  traceId,
+}) => {
   // Fetch articles.
   console.time(`Fetch Contentful data`)
   console.log(`Starting to fetch data from Contentful`)
@@ -37,7 +45,10 @@ module.exports = async ({ spaceId, accessToken, host, syncToken }) => {
 
   let currentSyncData
   try {
-    let query = syncToken ? { nextSyncToken: syncToken } : { initial: true }
+    const didRunFirstFetchFromExportFile = exportFile && traceId === `secondary-sourceNodes`
+
+    let query = syncToken && !didRunFirstFetchFromExportFile ?
+      { nextSyncToken: syncToken } : { initial: true }
     currentSyncData = await client.sync(query)
   } catch (e) {
     console.log(`error fetching contentful data`, e)
@@ -59,7 +70,20 @@ module.exports = async ({ spaceId, accessToken, host, syncToken }) => {
   // Fix IDs on entries and assets, created/updated and deleted.
   contentTypeItems = contentTypeItems.map(c => normalize.fixIds(c))
 
-  currentSyncData.entries = currentSyncData.entries.map(e => {
+  let entries = currentSyncData.entries
+
+  // If it's our first run and an exportFile was specified
+  if (exportFile && traceId === `initial-sourceNodes`) {
+    if (fs.existsSync(exportFile)) {
+      // If file exists, use entries from file
+      entries = JSON.parse(fs.readFileSync(exportFile))
+    } else {
+      // Else, write new entries to file
+      fs.writeFileSync(exportFile, JSON.stringify(currentSyncData.entries))
+    }
+  }
+
+  currentSyncData.entries = entries.map(e => {
     if (e) {
       return normalize.fixIds(e)
     }

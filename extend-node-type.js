@@ -6,21 +6,20 @@ var _extends3 = _interopRequireDefault(_extends2);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var Promise = require(`bluebird`);
+const Promise = require(`bluebird`);
+const {
+  GraphQLObjectType,
+  GraphQLBoolean,
+  GraphQLString,
+  GraphQLInt,
+  GraphQLFloat,
+  GraphQLEnumType
+} = require(`graphql`);
+const qs = require(`qs`);
+const base64Img = require(`base64-img`);
+const _ = require(`lodash`);
 
-var _require = require(`graphql`),
-    GraphQLObjectType = _require.GraphQLObjectType,
-    GraphQLBoolean = _require.GraphQLBoolean,
-    GraphQLString = _require.GraphQLString,
-    GraphQLInt = _require.GraphQLInt,
-    GraphQLFloat = _require.GraphQLFloat,
-    GraphQLEnumType = _require.GraphQLEnumType;
-
-var qs = require(`qs`);
-var base64Img = require(`base64-img`);
-var _ = require(`lodash`);
-
-var ImageFormatType = new GraphQLEnumType({
+const ImageFormatType = new GraphQLEnumType({
   name: `ContentfulImageFormat`,
   values: {
     NO_CHANGE: { value: `` },
@@ -30,7 +29,7 @@ var ImageFormatType = new GraphQLEnumType({
   }
 });
 
-var ImageResizingBehavior = new GraphQLEnumType({
+const ImageResizingBehavior = new GraphQLEnumType({
   name: `ImageResizingBehavior`,
   values: {
     NO_CHANGE: {
@@ -60,7 +59,7 @@ var ImageResizingBehavior = new GraphQLEnumType({
   }
 });
 
-var ImageCropFocusType = new GraphQLEnumType({
+const ImageCropFocusType = new GraphQLEnumType({
   name: `ContentfulImageCropFocus`,
   values: {
     TOP: { value: `top` },
@@ -75,47 +74,39 @@ var ImageCropFocusType = new GraphQLEnumType({
   }
 });
 
-var isImage = function isImage(image) {
-  return _.includes([`image/jpeg`, `image/jpg`, `image/png`, `image/webp`, `image/gif`], _.get(image, `file.contentType`));
-};
+const isImage = image => _.includes([`image/jpeg`, `image/jpg`, `image/png`, `image/webp`, `image/gif`], _.get(image, `file.contentType`));
 
-var getBase64Image = function getBase64Image(imgUrl) {
-  var args = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
-
-  var requestUrl = `https:${imgUrl}?w=20`;
+const getBase64Image = (imgUrl, args = {}) => {
+  const requestUrl = `https:${imgUrl}?w=20`;
   // TODO add caching.
-  return new Promise(function (resolve) {
-    base64Img.requestBase64(requestUrl, function (a, b, body) {
+  return new Promise(resolve => {
+    base64Img.requestBase64(requestUrl, (a, b, body) => {
       resolve(body);
     });
   });
 };
 
-var getBase64ImageAndBasicMeasurements = function getBase64ImageAndBasicMeasurements(image, args) {
-  return new Promise(function (resolve) {
-    getBase64Image(image.file.url, args).then(function (base64Str) {
-      var aspectRatio = void 0;
-      if (args.width && args.height) {
-        aspectRatio = args.width / args.height;
-      } else {
-        aspectRatio = image.file.details.image.width / image.file.details.image.height;
-      }
+const getBase64ImageAndBasicMeasurements = (image, args) => new Promise(resolve => {
+  getBase64Image(image.file.url, args).then(base64Str => {
+    let aspectRatio;
+    if (args.width && args.height) {
+      aspectRatio = args.width / args.height;
+    } else {
+      aspectRatio = image.file.details.image.width / image.file.details.image.height;
+    }
 
-      resolve({
-        contentType: image.file.contentType,
-        base64Str,
-        aspectRatio,
-        width: image.file.details.image.width,
-        height: image.file.details.image.height
-      });
+    resolve({
+      contentType: image.file.contentType,
+      base64Str,
+      aspectRatio,
+      width: image.file.details.image.width,
+      height: image.file.details.image.height
     });
   });
-};
-var createUrl = function createUrl(imgUrl) {
-  var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
-
+});
+const createUrl = (imgUrl, options = {}) => {
   // Convert to Contentful names and filter out undefined/null values.
-  var args = _.pickBy({
+  const args = _.pickBy({
     w: options.width,
     h: options.height,
     fl: options.jpegProgressive ? `progressive` : null,
@@ -128,18 +119,12 @@ var createUrl = function createUrl(imgUrl) {
 };
 exports.createUrl = createUrl;
 
-var resolveResponsiveResolution = function resolveResponsiveResolution(image, options) {
+const resolveResponsiveResolution = (image, options) => {
   if (!isImage(image)) return null;
 
-  return new Promise(function (resolve) {
-    getBase64ImageAndBasicMeasurements(image, options).then(function (_ref) {
-      var contentType = _ref.contentType,
-          base64Str = _ref.base64Str,
-          width = _ref.width,
-          height = _ref.height,
-          aspectRatio = _ref.aspectRatio;
-
-      var desiredAspectRatio = aspectRatio;
+  return new Promise(resolve => {
+    getBase64ImageAndBasicMeasurements(image, options).then(({ contentType, base64Str, width, height, aspectRatio }) => {
+      let desiredAspectRatio = aspectRatio;
 
       // If we're cropping, calculate the specified aspect ratio.
       if (options.height) {
@@ -160,7 +145,7 @@ var resolveResponsiveResolution = function resolveResponsiveResolution(image, op
       //
       // This is enough sizes to provide close to the optimal image size for every
       // device size / screen resolution
-      var sizes = [];
+      let sizes = [];
       sizes.push(options.width);
       sizes.push(options.width * 1.5);
       sizes.push(options.width * 2);
@@ -168,16 +153,14 @@ var resolveResponsiveResolution = function resolveResponsiveResolution(image, op
       sizes = sizes.map(Math.round);
 
       // Filter out sizes larger than the image's width.
-      var filteredSizes = sizes.filter(function (size) {
-        return size < width;
-      });
+      const filteredSizes = sizes.filter(size => size < width);
 
       // Sort sizes for prettiness.
-      var sortedSizes = _.sortBy(filteredSizes);
+      const sortedSizes = _.sortBy(filteredSizes);
 
       // Create the srcSet.
-      var srcSet = sortedSizes.map(function (size, i) {
-        var resolution = void 0;
+      const srcSet = sortedSizes.map((size, i) => {
+        let resolution;
         switch (i) {
           case 0:
             resolution = `1x`;
@@ -193,14 +176,14 @@ var resolveResponsiveResolution = function resolveResponsiveResolution(image, op
             break;
           default:
         }
-        var h = Math.round(size / desiredAspectRatio);
+        const h = Math.round(size / desiredAspectRatio);
         return `${createUrl(image.file.url, (0, _extends3.default)({}, options, {
           width: size,
           height: h
         }))} ${resolution}`;
       }).join(`,\n`);
 
-      var pickedHeight = void 0;
+      let pickedHeight;
       if (options.height) {
         pickedHeight = options.height;
       } else {
@@ -222,18 +205,12 @@ var resolveResponsiveResolution = function resolveResponsiveResolution(image, op
 };
 exports.resolveResponsiveResolution = resolveResponsiveResolution;
 
-var resolveResponsiveSizes = function resolveResponsiveSizes(image, options) {
+const resolveResponsiveSizes = (image, options) => {
   if (!isImage(image)) return null;
 
-  return new Promise(function (resolve) {
-    getBase64ImageAndBasicMeasurements(image, options).then(function (_ref2) {
-      var contentType = _ref2.contentType,
-          base64Str = _ref2.base64Str,
-          width = _ref2.width,
-          height = _ref2.height,
-          aspectRatio = _ref2.aspectRatio;
-
-      var desiredAspectRatio = aspectRatio;
+  return new Promise(resolve => {
+    getBase64ImageAndBasicMeasurements(image, options).then(({ contentType, base64Str, width, height, aspectRatio }) => {
+      let desiredAspectRatio = aspectRatio;
 
       // If we're cropping, calculate the specified aspect ratio.
       if (options.maxHeight) {
@@ -251,7 +228,7 @@ var resolveResponsiveSizes = function resolveResponsiveSizes(image, options) {
       //
       // This is enough sizes to provide close to the optimal image size for every
       // device size / screen resolution
-      var sizes = [];
+      let sizes = [];
       sizes.push(options.maxWidth / 4);
       sizes.push(options.maxWidth / 2);
       sizes.push(options.maxWidth);
@@ -261,20 +238,18 @@ var resolveResponsiveSizes = function resolveResponsiveSizes(image, options) {
       sizes = sizes.map(Math.round);
 
       // Filter out sizes larger than the image's maxWidth.
-      var filteredSizes = sizes.filter(function (size) {
-        return size < width;
-      });
+      const filteredSizes = sizes.filter(size => size < width);
 
       // Add the original image to ensure the largest image possible
       // is available for small images.
       filteredSizes.push(width);
 
       // Sort sizes for prettiness.
-      var sortedSizes = _.sortBy(filteredSizes);
+      const sortedSizes = _.sortBy(filteredSizes);
 
       // Create the srcSet.
-      var srcSet = sortedSizes.map(function (width) {
-        var h = Math.round(width / desiredAspectRatio);
+      const srcSet = sortedSizes.map(width => {
+        const h = Math.round(width / desiredAspectRatio);
         return `${createUrl(image.file.url, (0, _extends3.default)({}, options, {
           width,
           height: h
@@ -296,17 +271,11 @@ var resolveResponsiveSizes = function resolveResponsiveSizes(image, options) {
 };
 exports.resolveResponsiveSizes = resolveResponsiveSizes;
 
-var resolveResize = function resolveResize(image, options) {
+const resolveResize = (image, options) => {
   if (!isImage(image)) return null;
 
-  return new Promise(function (resolve) {
-    getBase64ImageAndBasicMeasurements(image, options).then(function (_ref3) {
-      var contentType = _ref3.contentType,
-          base64Str = _ref3.base64Str,
-          width = _ref3.width,
-          height = _ref3.height,
-          aspectRatio = _ref3.aspectRatio;
-
+  return new Promise(resolve => {
+    getBase64ImageAndBasicMeasurements(image, options).then(({ contentType, base64Str, width, height, aspectRatio }) => {
       // If the user selected a height (so cropping) and fit option
       // is not set, we'll set our defaults
       if (options.height) {
@@ -320,8 +289,8 @@ var resolveResize = function resolveResize(image, options) {
         return;
       }
 
-      var pickedWidth = options.width;
-      var pickedHeight = void 0;
+      const pickedWidth = options.width;
+      let pickedHeight;
       if (options.height) {
         pickedHeight = options.height;
       } else {
@@ -340,9 +309,7 @@ var resolveResize = function resolveResize(image, options) {
 
 exports.resolveResize = resolveResize;
 
-exports.extendNodeType = function (_ref4) {
-  var type = _ref4.type;
-
+exports.extendNodeType = ({ type }) => {
   if (type.name !== `ContentfulAsset`) {
     return {};
   }
