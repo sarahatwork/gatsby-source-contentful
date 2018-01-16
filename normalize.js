@@ -6,24 +6,16 @@ var _extends3 = _interopRequireDefault(_extends2);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var _ = require(`lodash`);
-var crypto = require(`crypto`);
-var stringify = require(`json-stringify-safe`);
-var deepMap = require(`deep-map`);
+const _ = require(`lodash`);
+const crypto = require(`crypto`);
+const stringify = require(`json-stringify-safe`);
+const deepMap = require(`deep-map`);
 
-var digest = function digest(str) {
-  return crypto.createHash(`md5`).update(str).digest(`hex`);
-};
-var typePrefix = `Contentful`;
-var makeTypeName = function makeTypeName(type) {
-  return _.upperFirst(_.camelCase(`${typePrefix} ${type}`));
-};
+const digest = str => crypto.createHash(`md5`).update(str).digest(`hex`);
+const typePrefix = `Contentful`;
+const makeTypeName = type => _.upperFirst(_.camelCase(`${typePrefix} ${type}`));
 
-var getLocalizedField = function getLocalizedField(_ref) {
-  var field = _ref.field,
-      defaultLocale = _ref.defaultLocale,
-      locale = _ref.locale;
-
+const getLocalizedField = ({ field, defaultLocale, locale }) => {
   if (!_.isUndefined(field[locale.code])) {
     return field[locale.code];
   } else if (!_.isUndefined(field[locale.fallbackCode])) {
@@ -33,19 +25,13 @@ var getLocalizedField = function getLocalizedField(_ref) {
   }
 };
 
-var makeGetLocalizedField = function makeGetLocalizedField(_ref2) {
-  var locale = _ref2.locale,
-      defaultLocale = _ref2.defaultLocale;
-  return function (field) {
-    return getLocalizedField({ field, locale, defaultLocale });
-  };
-};
+const makeGetLocalizedField = ({ locale, defaultLocale }) => field => getLocalizedField({ field, locale, defaultLocale });
 
 exports.getLocalizedField = getLocalizedField;
 
 // If the id starts with a number, left-pad it with a c (for Contentful of
 // course :-))
-var fixId = function fixId(id) {
+const fixId = id => {
   if (!_.isString(id)) {
     id = id.toString();
   }
@@ -56,85 +42,64 @@ var fixId = function fixId(id) {
 };
 exports.fixId = fixId;
 
-exports.fixIds = function (object) {
-  return deepMap(object, function (v, k) {
-    return k === `id` ? fixId(v) : v;
+exports.fixIds = object => {
+  const out = deepMap(object, (v, k) => k === `id` ? fixId(v) : v);
+
+  return (0, _extends3.default)({}, out, {
+    sys: (0, _extends3.default)({}, out.sys, {
+      contentful_id: object.sys.id
+    })
   });
 };
 
-var makeId = function makeId(_ref3) {
-  var id = _ref3.id,
-      currentLocale = _ref3.currentLocale,
-      defaultLocale = _ref3.defaultLocale;
-  return currentLocale === defaultLocale ? id : `${id}___${currentLocale}`;
-};
+const makeId = ({ id, currentLocale, defaultLocale }) => currentLocale === defaultLocale ? id : `${id}___${currentLocale}`;
 
 exports.makeId = makeId;
 
-var makeMakeId = function makeMakeId(_ref4) {
-  var currentLocale = _ref4.currentLocale,
-      defaultLocale = _ref4.defaultLocale;
-  return function (id) {
-    return makeId({ id, currentLocale, defaultLocale });
-  };
-};
+const makeMakeId = ({ currentLocale, defaultLocale }) => id => makeId({ id, currentLocale, defaultLocale });
 
-exports.buildEntryList = function (_ref5) {
-  var contentTypeItems = _ref5.contentTypeItems,
-      currentSyncData = _ref5.currentSyncData;
-  return contentTypeItems.map(function (contentType) {
-    return currentSyncData.entries.filter(function (entry) {
-      return entry.sys.contentType.sys.id === contentType.sys.id;
-    });
-  });
-};
+exports.buildEntryList = ({ contentTypeItems, currentSyncData }) => contentTypeItems.map(contentType => currentSyncData.entries.filter(entry => entry.sys.contentType.sys.id === contentType.sys.id));
 
-exports.buildResolvableSet = function (_ref6) {
-  var entryList = _ref6.entryList,
-      _ref6$existingNodes = _ref6.existingNodes,
-      existingNodes = _ref6$existingNodes === undefined ? [] : _ref6$existingNodes,
-      _ref6$assets = _ref6.assets,
-      assets = _ref6$assets === undefined ? [] : _ref6$assets,
-      locales = _ref6.locales,
-      defaultLocale = _ref6.defaultLocale;
+exports.buildResolvableSet = ({
+  entryList,
+  existingNodes = [],
+  assets = [],
+  locales,
+  defaultLocale
+}) => {
+  const resolvable = new Set();
+  existingNodes.forEach(n => resolvable.add(n.id));
 
-  var resolvable = new Set();
-  existingNodes.forEach(function (n) {
-    return resolvable.add(n.id);
-  });
-
-  entryList.forEach(function (entries) {
-    entries.forEach(function (entry) {
+  entryList.forEach(entries => {
+    entries.forEach(entry => {
       resolvable.add(entry.sys.id);
     });
   });
-  assets.forEach(function (assetItem) {
-    return resolvable.add(assetItem.sys.id);
-  });
+  assets.forEach(assetItem => resolvable.add(assetItem.sys.id));
 
   return resolvable;
 };
 
-exports.buildForeignReferenceMap = function (_ref7) {
-  var contentTypeItems = _ref7.contentTypeItems,
-      entryList = _ref7.entryList,
-      resolvable = _ref7.resolvable,
-      defaultLocale = _ref7.defaultLocale,
-      locales = _ref7.locales;
-
-  var foreignReferenceMap = {};
-  contentTypeItems.forEach(function (contentTypeItem, i) {
-    var contentTypeItemId = contentTypeItem.name.toLowerCase();
-    entryList[i].forEach(function (entryItem) {
-      var entryItemFields = entryItem.fields;
-      Object.keys(entryItemFields).forEach(function (entryItemFieldKey) {
+exports.buildForeignReferenceMap = ({
+  contentTypeItems,
+  entryList,
+  resolvable,
+  defaultLocale,
+  locales
+}) => {
+  const foreignReferenceMap = {};
+  contentTypeItems.forEach((contentTypeItem, i) => {
+    const contentTypeItemId = contentTypeItem.name.toLowerCase();
+    entryList[i].forEach(entryItem => {
+      const entryItemFields = entryItem.fields;
+      Object.keys(entryItemFields).forEach(entryItemFieldKey => {
         if (entryItemFields[entryItemFieldKey]) {
-          var entryItemFieldValue = entryItemFields[entryItemFieldKey][defaultLocale];
+          let entryItemFieldValue = entryItemFields[entryItemFieldKey][defaultLocale];
           // If this is an array of single reference object
           // add to the reference map, otherwise ignore.
           if (Array.isArray(entryItemFieldValue)) {
             if (entryItemFieldValue[0] && entryItemFieldValue[0].sys && entryItemFieldValue[0].sys.type && entryItemFieldValue[0].sys.id) {
-              entryItemFieldValue.forEach(function (v) {
+              entryItemFieldValue.forEach(v => {
                 // Don't create link to an unresolvable field.
                 if (!resolvable.has(v.sys.id)) {
                   return;
@@ -167,8 +132,8 @@ exports.buildForeignReferenceMap = function (_ref7) {
 };
 
 function createTextNode(node, key, text, createNode) {
-  var str = _.isString(text) ? text : ` `;
-  var textNode = {
+  const str = _.isString(text) ? text : ` `;
+  const textNode = {
     id: `${node.id}${key}TextNode`,
     parent: node.id,
     children: [],
@@ -189,8 +154,8 @@ function createTextNode(node, key, text, createNode) {
 exports.createTextNode = createTextNode;
 
 function createJSONNode(node, key, content, createNode) {
-  var str = JSON.stringify(content);
-  var JSONNode = (0, _extends3.default)({}, content, {
+  const str = JSON.stringify(content);
+  const JSONNode = (0, _extends3.default)({}, content, {
     id: `${node.id}${key}JSONNode`,
     parent: node.id,
     children: [],
@@ -209,97 +174,69 @@ function createJSONNode(node, key, content, createNode) {
 }
 exports.createJSONNode = createJSONNode;
 
-var getBlankValue = function getBlankValue(contentTypeItemField) {
-  if (contentTypeItemField.type.match(/Symbol|Date/)) {
-    return ``;
-  } else if (contentTypeItemField.type.match(/Text/)) {
-    return { [contentTypeItemField.id]: `` };
-  } else if (contentTypeItemField.type.match(/Number/)) {
-    return NaN;
-  } else if (contentTypeItemField.type.match(/Object|Location|Media|Reference|Link/)) {
-    return {};
-  } else if (contentTypeItemField.type.match(/Array/)) {
-    // Setting values recursively is useful for 'never defined entries'
-    // TODO: Does not work for arrays of references, assets, objects, ...
-    return [getBlankValue(contentTypeItemField.items)];
-  } else if (contentTypeItemField.type.match(/Boolean/)) {
-    return false;
-  }
-
-  return undefined;
-};
-
-exports.createContentTypeNodes = function (_ref8) {
-  var contentTypeItem = _ref8.contentTypeItem,
-      restrictedNodeFields = _ref8.restrictedNodeFields,
-      conflictFieldPrefix = _ref8.conflictFieldPrefix,
-      entries = _ref8.entries,
-      createNode = _ref8.createNode,
-      resolvable = _ref8.resolvable,
-      foreignReferenceMap = _ref8.foreignReferenceMap,
-      defaultLocale = _ref8.defaultLocale,
-      locales = _ref8.locales;
-
-  var contentTypeItemId = contentTypeItem.name;
-  locales.forEach(function (locale) {
-    var mId = makeMakeId({ currentLocale: locale.code, defaultLocale });
-    var getField = makeGetLocalizedField({ locale, defaultLocale });
+exports.createContentTypeNodes = ({
+  contentTypeItem,
+  restrictedNodeFields,
+  conflictFieldPrefix,
+  entries,
+  createNode,
+  resolvable,
+  foreignReferenceMap,
+  defaultLocale,
+  locales
+}) => {
+  const contentTypeItemId = contentTypeItem.name;
+  locales.forEach(locale => {
+    const mId = makeMakeId({ currentLocale: locale.code, defaultLocale });
+    const getField = makeGetLocalizedField({ locale, defaultLocale });
 
     // Warn about any field conflicts
-    var conflictFields = [];
-    contentTypeItem.fields.forEach(function (contentTypeItemField) {
-      var fieldName = contentTypeItemField.id;
+    const conflictFields = [];
+    contentTypeItem.fields.forEach(contentTypeItemField => {
+      const fieldName = contentTypeItemField.id;
       if (restrictedNodeFields.includes(fieldName)) {
         console.log(`Restricted field found for ContentType ${contentTypeItemId} and field ${fieldName}. Prefixing with ${conflictFieldPrefix}.`);
         conflictFields.push(fieldName);
       }
     });
 
-    var defaultFields = contentTypeItem.fields.reduce(function (acc, contentTypeItemField) {
-      acc[contentTypeItemField.id] = getBlankValue(contentTypeItemField);
-      return acc;
-    }, {});
-
     // First create nodes for each of the entries of that content type
-    var entryNodes = entries.map(function (entryItem) {
+    const entryNodes = entries.map(entryItem => {
       // Get localized fields.
-      var entryItemFields = _.mapValues(entryItem.fields, function (v) {
-        return getField(v);
-      });
+      const entryItemFields = _.mapValues(entryItem.fields, v => getField(v));
 
       // Prefix any conflicting fields
       // https://github.com/gatsbyjs/gatsby/pull/1084#pullrequestreview-41662888
-      conflictFields.forEach(function (conflictField) {
+      conflictFields.forEach(conflictField => {
         entryItemFields[`${conflictFieldPrefix}${conflictField}`] = entryItemFields[conflictField];
         delete entryItemFields[conflictField];
       });
 
       // Add linkages to other nodes based on foreign references
-      Object.keys(entryItemFields).forEach(function (entryItemFieldKey) {
+      Object.keys(entryItemFields).forEach(entryItemFieldKey => {
         if (entryItemFields[entryItemFieldKey]) {
-          var entryItemFieldValue = entryItemFields[entryItemFieldKey];
+          const entryItemFieldValue = entryItemFields[entryItemFieldKey];
+
           if (Array.isArray(entryItemFieldValue)) {
             if (entryItemFieldValue[0].sys && entryItemFieldValue[0].sys.type && entryItemFieldValue[0].sys.id) {
-              entryItemFields[`${entryItemFieldKey}___NODE`] = entryItemFieldValue.filter(function (v) {
-                return resolvable.has(v.sys.id);
-              }).map(function (v) {
-                return mId(v.sys.id);
-              });
+              entryItemFields[`${entryItemFieldKey}___NODE`] = entryItemFieldValue.filter(v => resolvable.has(v.sys.id)).map(v => mId(v.sys.id));
 
               delete entryItemFields[entryItemFieldKey];
             }
-          } else if (entryItemFieldValue && entryItemFieldValue.sys && entryItemFieldValue.sys.type && entryItemFieldValue.sys.id && resolvable.has(entryItemFieldValue.sys.id)) {
-            entryItemFields[`${entryItemFieldKey}___NODE`] = mId(entryItemFieldValue.sys.id);
+          } else if (entryItemFieldValue && entryItemFieldValue.sys && entryItemFieldValue.sys.type && entryItemFieldValue.sys.id) {
+            if (resolvable.has(entryItemFieldValue.sys.id)) {
+              entryItemFields[`${entryItemFieldKey}___NODE`] = mId(entryItemFieldValue.sys.id);
+            }
             delete entryItemFields[entryItemFieldKey];
           }
         }
       });
 
       // Add reverse linkages if there are any for this node
-      var foreignReferences = foreignReferenceMap[entryItem.sys.id];
+      const foreignReferences = foreignReferenceMap[entryItem.sys.id];
       if (foreignReferences) {
-        foreignReferences.forEach(function (foreignReference) {
-          var existingReference = entryItemFields[foreignReference.name];
+        foreignReferences.forEach(foreignReference => {
+          const existingReference = entryItemFields[foreignReference.name];
           if (existingReference) {
             entryItemFields[foreignReference.name].push(mId(foreignReference.id));
           } else {
@@ -310,8 +247,9 @@ exports.createContentTypeNodes = function (_ref8) {
         });
       }
 
-      var entryNode = {
+      let entryNode = {
         id: mId(entryItem.sys.id),
+        contentful_id: entryItem.sys.contentful_id,
         createdAt: entryItem.sys.createdAt,
         updatedAt: entryItem.sys.updatedAt,
         parent: contentTypeItemId,
@@ -321,7 +259,7 @@ exports.createContentTypeNodes = function (_ref8) {
         }
 
         // Use default locale field.
-      };Object.keys(entryItemFields).forEach(function (entryItemFieldKey) {
+      };Object.keys(entryItemFields).forEach(entryItemFieldKey => {
         // Ignore fields with "___node" as they're already handled
         // and won't be a text field.
         if (entryItemFieldKey.split(`___`).length > 1) {
@@ -333,16 +271,14 @@ exports.createContentTypeNodes = function (_ref8) {
 
       // Replace text fields with text nodes so we can process their markdown
       // into HTML.
-      Object.keys(entryItemFields).forEach(function (entryItemFieldKey) {
+      Object.keys(entryItemFields).forEach(entryItemFieldKey => {
         // Ignore fields with "___node" as they're already handled
         // and won't be a text field.
         if (entryItemFieldKey.split(`___`).length > 1) {
           return;
         }
 
-        var fieldType = contentTypeItem.fields.find(function (f) {
-          return (restrictedNodeFields.includes(f.id) ? `${conflictFieldPrefix}${f.id}` : f.id) === entryItemFieldKey;
-        }).type;
+        const fieldType = contentTypeItem.fields.find(f => (restrictedNodeFields.includes(f.id) ? `${conflictFieldPrefix}${f.id}` : f.id) === entryItemFieldKey).type;
         if (fieldType === `Text`) {
           entryItemFields[`${entryItemFieldKey}___NODE`] = createTextNode(entryNode, entryItemFieldKey, entryItemFields[entryItemFieldKey], createNode);
 
@@ -354,11 +290,10 @@ exports.createContentTypeNodes = function (_ref8) {
         }
       });
 
-      entryNode = (0, _extends3.default)({}, defaultFields, entryItemFields, entryNode, {
-        node_locale: locale.code
+      entryNode = (0, _extends3.default)({}, entryItemFields, entryNode, { node_locale: locale.code
 
         // Get content digest of node.
-      });var contentDigest = digest(stringify(entryNode));
+      });const contentDigest = digest(stringify(entryNode));
 
       entryNode.internal.contentDigest = contentDigest;
 
@@ -366,7 +301,7 @@ exports.createContentTypeNodes = function (_ref8) {
     });
 
     // Create a node for each content type
-    var contentTypeNode = {
+    const contentTypeNode = {
       id: contentTypeItemId,
       parent: null,
       children: [],
@@ -378,28 +313,28 @@ exports.createContentTypeNodes = function (_ref8) {
       }
 
       // Get content digest of node.
-    };var contentDigest = digest(stringify(contentTypeNode));
+    };const contentDigest = digest(stringify(contentTypeNode));
 
     contentTypeNode.internal.contentDigest = contentDigest;
 
     createNode(contentTypeNode);
-    entryNodes.forEach(function (entryNode) {
+    entryNodes.forEach(entryNode => {
       createNode(entryNode);
     });
   });
 };
 
-exports.createAssetNodes = function (_ref9) {
-  var assetItem = _ref9.assetItem,
-      createNode = _ref9.createNode,
-      defaultLocale = _ref9.defaultLocale,
-      locales = _ref9.locales;
+exports.createAssetNodes = ({
+  assetItem,
+  createNode,
+  defaultLocale,
+  locales
+}) => {
+  locales.forEach(locale => {
+    const mId = makeMakeId({ currentLocale: locale.code, defaultLocale });
+    const getField = makeGetLocalizedField({ locale, defaultLocale });
 
-  locales.forEach(function (locale) {
-    var mId = makeMakeId({ currentLocale: locale.code, defaultLocale });
-    var getField = makeGetLocalizedField({ locale, defaultLocale });
-
-    var localizedAsset = (0, _extends3.default)({}, assetItem);
+    const localizedAsset = (0, _extends3.default)({}, assetItem);
     // Create a node for each asset. They may be referenced by Entries
     //
     // Get localized fields.
@@ -408,7 +343,7 @@ exports.createAssetNodes = function (_ref9) {
       title: localizedAsset.fields.title ? getField(localizedAsset.fields.title) : ``,
       description: localizedAsset.fields.description ? getField(localizedAsset.fields.description) : ``
     };
-    var assetNode = (0, _extends3.default)({
+    const assetNode = (0, _extends3.default)({
       id: mId(localizedAsset.sys.id),
       parent: null,
       children: []
@@ -419,7 +354,7 @@ exports.createAssetNodes = function (_ref9) {
       }
 
       // Get content digest of node.
-    });var contentDigest = digest(stringify(assetNode));
+    });const contentDigest = digest(stringify(assetNode));
 
     assetNode.internal.contentDigest = contentDigest;
 
